@@ -1,3 +1,104 @@
+# # import requests
+# # from bs4 import BeautifulSoup
+# #
+# # from constatns import SEARCH_BASE_URL, ITEM_CLASS
+# #
+# # # pagination search input
+# # page_input = int(input("enter the page number: "))
+# # if page_input >= 1:
+# #     page_by_items = ((page_input - 1) * 10) + 1
+# # else:
+# #     page_by_items = 10
+# # # query search input
+# # query = input('enter search: ')
+# # response = requests.get(SEARCH_BASE_URL.format(query=query, page_by_items=page_by_items))
+# # # print(response.status_code)
+# # # print(response.url)
+# # # print(dir(response))
+# # # print(response.text)
+# # soup = BeautifulSoup(response.text, 'html.parser')
+# # # print(soup.prettify())
+# # # print(soup.title)
+# # # print(soup.title.string)
+# # # print(soup.title.text)
+# # # single / detail page finds
+# # request_item = soup.find_all("a", attrs={'class': ITEM_CLASS})
+# # for request_item_detail in request_item:
+# #     # print(request_item_detail)
+# #     # print(request_item_detail['href'])
+# #     response_item_url=request_item_detail['href']
+# #     # print("text: ", request_item_detail.text)
+# #     response_item = requests.get(response_item_url)
+# #     item_soup = BeautifulSoup(response_item.text, "html.parser")
+# #     print(response_item.status_code)
+# #     print(response_item.url)
+# # #     print("item_soap: ", item_soup.title.text)
+# # import requests
+# # from bs4 import BeautifulSoup
+# #
+# # from models import SearchItem
+# # from constatns import SEARCH_BASE_URL, ITEM_CLASS
+# #
+# #
+# # def main():
+# #     """
+# #     Main function to perform the web scraping and item retrieval.
+# #     """
+# #     result_items = list()
+# #     # Pagination search input
+# #     page_input = int(input("Enter the page number: "))
+# #     if page_input >= 1:
+# #         page_by_items = ((page_input - 1) * 10) + 1
+# #     else:
+# #         page_by_items = 10  # Default to 10 if the input is invalid
+# #
+# #     # Query search input
+# #     query = input('Enter the search query add + instead of space: ')
+# #
+# #     # Send a GET request to the search URL
+# #     response = requests.get(SEARCH_BASE_URL.format(query=query, page_by_items=page_by_items))
+# #
+# #     # Parse the response content using BeautifulSoup
+# #     soup = BeautifulSoup(response.text, 'html.parser')
+# #
+# #     # Find all items with the specified class
+# #     request_items = soup.find_all("a", attrs={'class': ITEM_CLASS})
+# #
+# #     # Process each item
+# #     for request_item_detail in request_items:
+# #         response_item_url = request_item_detail['href']
+# #         response_item = requests.get(response_item_url)
+# #         item_soup = BeautifulSoup(response_item.text, "html.parser")
+# #         result_search_item = SearchItem(
+# #             title=request_item_detail.text,
+# #             url=response_item_url
+# #         )
+# #         result_items.append(result_search_item)
+# #     print(result_items)
+# #
+# #         # Send a GET request to the item URL
+# #         # print(response_item.status_code)
+# #         # print(response_item.url)
+# #         # print("Item title: ", item_soup.title.text)
+# from constatns import BASE_URL, SEARCH_BASE_URL, SEARCH_PAGE_COUNT
+# from models import Keyword, SearchByKeyword
+# from scraper_handler import ScraperHandler
+#
+#
+# if __name__ == '__main__':
+#     keyword = Keyword(title=input('keyword: '))
+#     page_count = int(input('Page Count: ') or SEARCH_PAGE_COUNT)
+#
+#     search_by_keyword = SearchByKeyword(keyword=keyword, page_count=page_count)
+#
+#     scraper_handler = ScraperHandler(base_url=BASE_URL, search_url=SEARCH_BASE_URL)
+#     search_result_items = scraper_handler.search_by_keyword(search_by_keyword_instance=search_by_keyword)
+#
+#     # print('Len search_result_items =>', len(search_result_items))
+#     # print('search_result_items =>', search_result_items)
+#     # for search_result_item in search_result_items:
+#     #     print(search_result_item.title, search_result_item.url)
+#
 import json
 import tkinter as tk
 from tkinter import simpledialog, messagebox
@@ -16,7 +117,7 @@ import matplotlib.pyplot as plt
 Base = declarative_base()
 
 # Add a global variable to store the scraped results
-scraped_results = list()
+scraped_results = []
 
 
 class ScrapedData(Base):
@@ -33,7 +134,7 @@ class ScrapedData(Base):
 
 
 # Create a SQLAlchemy engine
-engine = create_engine('postgresql://postgres:1379@localhost:5432/scraper_db')
+engine = create_engine('postgresql://postgres:1379@localhost:5432/techcrunch_scraper')
 
 # Create the table in the database
 Base.metadata.create_all(engine)
@@ -68,11 +169,29 @@ def scrape_techcrunch(query, page_by_items):
                                                                                                  class_="article__byline") else None
         author = author_tag.text.strip() if author_tag else 'Unknown Author'
 
+        article_containers = item_soup.find_all(
+            'div', class_=['article-container', 'article--post']
+        )
+
+        category = 'Unknown Category'  # Default
+
+        # Search within each container
+        for container in article_containers:
+            category_tag = container.find(
+                "a", class_="article__primary-category__link gradient-text gradient-text--green-gradient"
+            )
+
+            if category_tag:
+                category = category_tag.text.strip()
+                break  # Exit the loop once you've found the first occurrence
+
         # Store the data in the database
-        store_data_in_database(item_soup.title.text, author, query)
+        store_data_in_database(item_soup.title.text, author, category,
+                               query)
         scraped_results.append({
             'title': item_soup.title.text,
             'author': author,
+            'category': category
         })
 
 

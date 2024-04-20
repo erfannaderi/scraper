@@ -5,3 +5,4 @@ SEARCH_BASE_URL = 'https://search.techcrunch.com/search?p={query}&b={page_by_ite
 ITEM_CLASS = {
     'fz-20 lh-22 fw-b': 'articleAnchorClassName'
 }
+SEARCH_PAGE_COUNT = 5
